@@ -657,10 +657,10 @@ static void mxt_report_input_data(struct mxt_data *data)
 					data->fingers[i].x);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
 					data->fingers[i].y);
-			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR,
-					data->fingers[i].w);
 			input_report_abs(data->input_dev, ABS_MT_PRESSURE,
 					 data->fingers[i].z);
+			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR,
+					data->fingers[i].w);
 #if TSP_USE_SHAPETOUCH
 			input_report_abs(data->input_dev, ABS_MT_COMPONENT,
 					 data->fingers[i].component);
@@ -698,6 +698,7 @@ static void mxt_report_input_data(struct mxt_data *data)
 #if TSP_ITDEV
 		if (!data->driver_paused)
 #endif
+			input_mt_report_pointer_emulation(data->input_dev, false);
 			input_sync(data->input_dev);
 	}
 
@@ -1646,19 +1647,28 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	input_dev->open = mxt_input_open;
 	input_dev->close = mxt_input_close;
 
+        set_bit(EV_SYN, input_dev->evbit);
 	set_bit(EV_ABS, input_dev->evbit);
 	set_bit(EV_KEY, input_dev->evbit);
 	set_bit(MT_TOOL_FINGER, input_dev->keybit);
+        set_bit(BTN_TOUCH, input_dev->keybit);
 	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
+
+	input_set_abs_params(input_dev, ABS_X, pdata->min_x,
+			     pdata->max_x, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, pdata->min_y,
+			     pdata->max_y, 0, 0);
+	input_set_abs_params(input_dev, ABS_PRESSURE, pdata->min_z,
+			     pdata->max_z, 0, 0);
 
 	input_mt_init_slots(input_dev, data->num_fingers);
 
+	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, pdata->min_w,
+			     pdata->max_w, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->min_x,
 			     pdata->max_x, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->min_y,
 			     pdata->max_y, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, pdata->min_w,
-			     pdata->max_w, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_PRESSURE, pdata->min_z,
 			     pdata->max_z, 0, 0);
 

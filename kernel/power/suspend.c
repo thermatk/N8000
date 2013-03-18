@@ -27,6 +27,8 @@
 
 #include "power.h"
 
+static suspend_state_t pm_suspend_state = PM_SUSPEND_ON;
+
 const char *const pm_states[PM_SUSPEND_MAX] = {
 #ifdef CONFIG_EARLYSUSPEND
 	[PM_SUSPEND_ON]		= "on",
@@ -340,9 +342,12 @@ int enter_state(suspend_state_t state)
 	printk("done.\n");
 
 	pr_debug("PM: Preparing system for %s sleep\n", pm_states[state]);
+
 	error = suspend_prepare();
 	if (error)
 		goto Unlock;
+
+        pm_suspend_state = state;
 
 	if (suspend_test(TEST_FREEZER))
 		goto Finish;
@@ -378,3 +383,9 @@ int pm_suspend(suspend_state_t state)
 	return -EINVAL;
 }
 EXPORT_SYMBOL(pm_suspend);
+
+suspend_state_t pm_suspend_get_state(void)
+{
+	return pm_suspend_state;
+}
+EXPORT_SYMBOL(pm_suspend_get_state);

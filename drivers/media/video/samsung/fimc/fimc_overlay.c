@@ -70,15 +70,28 @@ int fimc_try_fmt_overlay(struct file *filp, void *fh, struct v4l2_format *f)
 
 int fimc_g_fmt_vid_overlay(struct file *filp, void *fh, struct v4l2_format *f)
 {
-	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
-	int ctx_id = ((struct fimc_prv_data *)fh)->ctx_id;
-	struct fimc_ctx *ctx;
+	struct fimc_control *ctrl = NULL;
+	int ctx_id = 0;
+	struct fimc_ctx *ctx = NULL;
 
-	ctx = &ctrl->out->ctx[ctx_id];
+	if (((struct fimc_prv_data *)fh)) {
+		ctrl = ((struct fimc_prv_data *)fh)->ctrl;
 
-	fimc_info1("%s: called\n", __func__);
+		ctx_id = ((struct fimc_prv_data *)fh)->ctx_id;
 
-	f->fmt.win = ctx->win;
+		if (ctrl && (ctx_id < FIMC_MAX_CTXS)) {
+			fimc_info1("%s: called\n", __func__);
+
+			if (ctrl->out) {
+				if (ctrl->out->ctx) {
+					ctx = &ctrl->out->ctx[ctx_id];
+
+					if (f && ctx)
+						f->fmt.win = ctx->win;
+				}
+			}
+		}
+	}
 
 	return 0;
 }
@@ -173,43 +186,55 @@ int fimc_s_fmt_vid_overlay(struct file *filp, void *fh, struct v4l2_format *f)
 
 int fimc_g_fbuf(struct file *filp, void *fh, struct v4l2_framebuffer *fb)
 {
-	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
-	int ctx_id = ((struct fimc_prv_data *)fh)->ctx_id;
+	struct fimc_control *ctrl = NULL;
+	int ctx_id = 0;
 	struct fimc_ctx *ctx;
 	u32 bpp = 1, format;
 
-	ctx = &ctrl->out->ctx[ctx_id];
+	if (((struct fimc_prv_data *)fh)) {
+		ctrl = ((struct fimc_prv_data *)fh)->ctrl;
 
-	fimc_info1("%s: called\n", __func__);
+		ctx_id = ((struct fimc_prv_data *)fh)->ctx_id;
 
-	fb->capability = ctx->fbuf.capability;
-	fb->flags = 0;
-	fb->base = ctx->fbuf.base;
+		if (ctrl && (ctx_id < FIMC_MAX_CTXS)) {
+			if (ctrl->out) {
+				ctx = &ctrl->out->ctx[ctx_id];
 
-	fb->fmt.width = ctx->fbuf.fmt.width;
-	fb->fmt.height = ctx->fbuf.fmt.height;
-	fb->fmt.pixelformat = ctx->fbuf.fmt.pixelformat;
-	format = ctx->fbuf.fmt.pixelformat;
+				if (fb && ctx) {
+					fimc_info1("%s: called\n", __func__);
 
-	switch (format) {
-	case V4L2_PIX_FMT_YUV420: /* fall through */
-	case V4L2_PIX_FMT_YVU420: /* fall through */
-	case V4L2_PIX_FMT_NV12:
-		bpp = 1;
-		break;
-	case V4L2_PIX_FMT_RGB565:
-		bpp = 2;
-		break;
-	case V4L2_PIX_FMT_RGB32:
-		bpp = 4;
-		break;
+					fb->capability = ctx->fbuf.capability;
+					fb->flags = 0;
+					fb->base = ctx->fbuf.base;
+
+					fb->fmt.width = ctx->fbuf.fmt.width;
+					fb->fmt.height = ctx->fbuf.fmt.height;
+					fb->fmt.pixelformat = ctx->fbuf.fmt.pixelformat;
+					format = ctx->fbuf.fmt.pixelformat;
+
+					switch (format) {
+					case V4L2_PIX_FMT_YUV420: /* fall through */
+					case V4L2_PIX_FMT_YVU420: /* fall through */
+					case V4L2_PIX_FMT_NV12:
+						bpp = 1;
+						break;
+					case V4L2_PIX_FMT_RGB565:
+						bpp = 2;
+						break;
+					case V4L2_PIX_FMT_RGB32:
+						bpp = 4;
+						break;
+					}
+
+					ctx->fbuf.fmt.bytesperline = fb->fmt.width * bpp;
+					fb->fmt.bytesperline = ctx->fbuf.fmt.bytesperline;
+					fb->fmt.sizeimage = ctx->fbuf.fmt.sizeimage;
+					fb->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
+					fb->fmt.priv = 0;
+				}
+			}
+		}
 	}
-
-	ctx->fbuf.fmt.bytesperline = fb->fmt.width * bpp;
-	fb->fmt.bytesperline = ctx->fbuf.fmt.bytesperline;
-	fb->fmt.sizeimage = ctx->fbuf.fmt.sizeimage;
-	fb->fmt.colorspace = V4L2_COLORSPACE_SMPTE170M;
-	fb->fmt.priv = 0;
 
 	return 0;
 }

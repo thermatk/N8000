@@ -228,8 +228,10 @@ void request_suspend_state(suspend_state_t new_state)
 	requested_suspend_state = new_state;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 }
+EXPORT_SYMBOL(request_suspend_state);
 
 suspend_state_t get_suspend_state(void)
 {
 	return requested_suspend_state;
 }
+EXPORT_SYMBOL(get_suspend_state);

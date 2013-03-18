@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -32,7 +32,6 @@
 #include "mali_kernel_ioctl.h"
 #include "mali_ukk_wrappers.h"
 #include "mali_kernel_pm.h"
-#include "mali_linux_pm.h"
 
 #include "mali_kernel_sysfs.h"
 
@@ -167,7 +166,7 @@ MODULE_PARM_DESC(mali_gpu_vol, "Mali Current Voltage");
 extern int gpu_power_state;
 module_param(gpu_power_state, int, S_IRUSR | S_IRGRP | S_IROTH); /* r--r--r-- */
 MODULE_PARM_DESC(gpu_power_state, "Mali Power State");
-extern _mali_device_power_states mali_dvfs_device_state;
+
 
 static char mali_dev_name[] = "mali"; /* should be const, but the functions we call requires non-cost */
 
@@ -229,7 +228,7 @@ int mali_driver_init(void)
 	}
 
 	/* print build options */
-	MALI_DEBUG_PRINT(2, ("%s\n", __malidrv_build_info()));
+	/* MALI_DEBUG_PRINT(2, ("%s\n", __malidrv_build_info())); */
 
     return 0;
 }
@@ -419,12 +418,6 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 	{
 		MALI_DEBUG_PRINT(7, ("arg was NULL\n"));
 		return -ENOTTY;
-	}
-
-	if (_MALI_DEVICE_SHUTDOWN == mali_dvfs_device_state)
-	{
-		MALI_DEBUG_PRINT(7, ("system is shutdown \n"));
-		return 0;
 	}
 
 	switch(cmd)

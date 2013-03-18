@@ -16,6 +16,7 @@
 #include <linux/irq.h>
 #include <linux/sched.h>
 #include <linux/pm.h>
+#include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/sysctl.h>
 #include <linux/proc_fs.h>
@@ -29,6 +30,11 @@
 #ifdef CONFIG_FAST_BOOT
 #include <linux/wakelock.h>
 #endif
+
+suspend_state_t pm_suspend_get_state(void);
+suspend_state_t get_suspend_state(void);
+int pm_suspend(suspend_state_t state);
+void request_suspend_state(suspend_state_t state);
 
 extern struct class *sec_class;
 
@@ -592,11 +598,24 @@ static void gpio_keys_report_event(struct gpio_button_data *bdata)
 		}
 
 #endif
-		input_event(input, type, button->code, !!state);
-		input_sync(input);
 
 		if (button->code == KEY_POWER)
 			printk(KERN_DEBUG"[keys]PWR %d\n", !!state);
+
+		if (button->code == KEY_POWER && ((pm_suspend_get_state() != PM_SUSPEND_ON) || (get_suspend_state() != PM_SUSPEND_ON))) {
+			printk(KERN_DEBUG"[keys]PWR pm_suspend_get_state() = %d\n", pm_suspend_get_state());
+			printk(KERN_DEBUG"[keys]PWR get_suspend_state() = %d\n", get_suspend_state());
+
+			if (!!state)
+				printk(KERN_DEBUG"[keys]PWR WAKEUP!!!\n");
+
+				request_suspend_state(PM_SUSPEND_ON);
+
+				pm_suspend(PM_SUSPEND_ON);
+		} else {
+			input_event(input, type, button->code, !!state);
+			input_sync(input);
+		}
 	}
 }
 

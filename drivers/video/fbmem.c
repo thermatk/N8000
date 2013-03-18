@@ -42,6 +42,10 @@
 
 #define FBPIXMAPSIZE	(1024 * 8)
 
+#ifdef CONFIG_MALI400_UMP
+#include <video/exynos_mali_ump.h>
+#endif
+
 static DEFINE_MUTEX(registration_lock);
 struct fb_info *registered_fb[FB_MAX] __read_mostly;
 int num_registered_fb __read_mostly;
@@ -1177,6 +1181,14 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		console_unlock();
 		unlock_fb_info(info);
 		break;
+#ifdef CONFIG_MALI400_UMP
+       case GET_UMP_SECURE_ID_BUF1:
+                pr_emerg("UMP: SecureID Buf1 Called\n");
+                return disp_get_ump_secure_id(info, arg, 0);
+       case GET_UMP_SECURE_ID_BUF2:
+                pr_emerg("UMP: SecureID Buf2 Called\n");
+                return disp_get_ump_secure_id(info, arg, 1);
+#endif
 	default:
 		if (!lock_fb_info(info))
 			return -ENODEV;

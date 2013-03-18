@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -15,8 +15,6 @@
 
 #include "mali_osk.h"
 #include "mali_kernel_common.h"
-#include "mali_pmm.h"
-#include "mali_pmm_state.h"
 
 /* needed to detect kernel version specific code */
 #include <linux/version.h>
@@ -48,9 +46,6 @@ typedef struct _mali_osk_notification_wrapper_t_struct
     _mali_osk_notification_t data;   /**< Notification data */
 } _mali_osk_notification_wrapper_t;
 
-bool	init_sem_main;
-struct semaphore sem_main_lock;
-
 _mali_osk_notification_queue_t *_mali_osk_notification_queue_init( void )
 {
 	_mali_osk_notification_queue_t *	result;
@@ -62,11 +57,6 @@ _mali_osk_notification_queue_t *_mali_osk_notification_queue_init( void )
 	init_waitqueue_head(&result->receive_queue);
 	INIT_LIST_HEAD(&result->head);
 
-	if (!init_sem_main) {
-		sema_init(&sem_main_lock, 1);
-		init_sem_main = true;
-	}
-
 	return result;
 }
 
@@ -75,19 +65,10 @@ _mali_osk_notification_t *_mali_osk_notification_create( u32 type, u32 size )
 	/* OPT Recycling of notification objects */
     _mali_osk_notification_wrapper_t *notification;
 
-	if (MALI_PMM_NOTIFICATION_TYPE == type) {
-		if (size != sizeof(mali_pmm_message_t))
-			return NULL;
-	}
-
-	down(&sem_main_lock);
-
 	notification = (_mali_osk_notification_wrapper_t *)kmalloc( sizeof(_mali_osk_notification_wrapper_t) + size, GFP_KERNEL );
     if (NULL == notification)
     {
 		MALI_DEBUG_PRINT(1, ("Failed to create a notification object\n"));
-		up(&sem_main_lock);
-
 		return NULL;
     }
 
@@ -109,17 +90,12 @@ _mali_osk_notification_t *_mali_osk_notification_create( u32 type, u32 size )
 	notification->data.result_buffer_size = size;
 
 	/* all ok */
-	up(&sem_main_lock);
-
     return &(notification->data);
 }
 
 void _mali_osk_notification_delete( _mali_osk_notification_t *object )
 {
 	_mali_osk_notification_wrapper_t *notification;
-
-	down(&sem_main_lock);
-
 	MALI_DEBUG_ASSERT_POINTER( object );
 
     notification = container_of( object, _mali_osk_notification_wrapper_t, data );
@@ -128,8 +104,6 @@ void _mali_osk_notification_delete( _mali_osk_notification_t *object )
 	list_del(&notification->list);
 	/* Free the container */
 	kfree(notification);
-
-	up(&sem_main_lock);
 }
 
 void _mali_osk_notification_queue_term( _mali_osk_notification_queue_t *queue )

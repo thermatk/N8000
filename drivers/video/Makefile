@@ -139,6 +139,7 @@ endif
 obj-$(CONFIG_FIMD_EXT_SUPPORT)    += samsung/extension/
 endif
 obj-$(CONFIG_FB_S5P_EXTDSP)       += samsung_extdisp/
+obj-$(CONFIG_MALI400_UMP)         += exynos_mali_ump.o
 obj-$(CONFIG_FB_FSL_DIU)	  += fsl-diu-fb.o
 obj-$(CONFIG_FB_COBALT)           += cobalt_lcdfb.o
 obj-$(CONFIG_FB_PNX4008_DUM)	  += pnx4008/
@@ -182,4 +183,10 @@ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 
 #video output switch sysfs driver
 obj-$(CONFIG_VIDEO_OUTPUT_CONTROL) += output.o
+
+ifeq ($(CONFIG_MALI400_UMP),y)
+        EXTRA_CFLAGS += -Idrivers/media/video/samsung/ump_r3p2 \
+                        -Idrivers/media/video/samsung/mali_r3p2/common \
+                        -Idrivers/media/video/samsung/mali_r3p2/linux
+endif
 

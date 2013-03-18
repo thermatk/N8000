@@ -12,26 +12,16 @@ obj-$(CONFIG_VIDEO_FIMG2D3X)	+= fimg2d3x/
 obj-$(CONFIG_VIDEO_FIMG2D4X)	+= fimg2d4x/
 endif
 
-ifeq ($(CONFIG_MALI_UMP_R3P1_LSI), y)
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= ump_r3p1/
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= mali_r3p1/
-else ifeq ($(CONFIG_MACH_U1), y)
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= ump/
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= mali/
-else ifeq ($(CONFIG_MACH_SMDKC210), y)
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= ump/
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= mali/
-else ifeq ($(CONFIG_MACH_SMDKV310), y)
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= ump/
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= mali/
-else
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= ump/
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= mali/
+ifeq ($(CONFIG_VIDEO_MALI_R2P4),y)
+        obj-$(CONFIG_VIDEO_UMP)         += ump/
+        obj-$(CONFIG_VIDEO_MALI400MP)   += mali/
+endif
+
+ifeq ($(CONFIG_VIDEO_MALI_R3P2),y)
+        obj-$(CONFIG_UMP)               += ump_r3p2/
+        obj-$(CONFIG_MALI400)           += mali_r3p2/
 endif
 
 obj-$(CONFIG_VIDEO_TSI)		+= tsi/
-
-obj-$(CONFIG_VIDEO_MALI400MP_R2P3)	+= mali_r2p3/
-obj-$(CONFIG_VIDEO_MALI400MP_R3P0)	+= mali_r3p0/
 
 EXTRA_CFLAGS += -Idrivers/media/video

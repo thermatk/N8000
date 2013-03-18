@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -76,8 +76,22 @@ static struct clk  *mali_clock = 0;
 
 static unsigned int GPU_MHZ	= 1000000;
 
-int mali_gpu_clk = 266;
-int mali_gpu_vol = 900000;
+#if defined(CONFIG_MALI_OVERCLOCK_533)
+	int mali_gpu_clk = 533;
+	int mali_gpu_vol = 1075000;
+#elif defined(CONFIG_MALI_OVERCLOCK_640)
+	int mali_gpu_clk = 640;
+	int mali_gpu_vol = 1125000;
+#elif defined(CONFIG_MALI_OVERCLOCK_733)
+	int mali_gpu_clk = 733;
+	int mali_gpu_vol = 1175000;
+#elif defined(CONFIG_MALI_OVERCLOCK_800)
+	int mali_gpu_clk = 800;
+	int mali_gpu_vol = 1200000;
+#else
+	int mali_gpu_clk = 440;
+	int mali_gpu_vol = 1050000;
+#endif
 
 #if MALI_DVFS_ENABLED
 #define MALI_DVFS_DEFAULT_STEP 0
@@ -113,10 +127,6 @@ extern struct platform_device s5pv310_device_pd[];
 extern struct platform_device exynos4_device_pd[];
 #endif
 #endif
-
-/*This code for reference value of GPU activation*/
-int activity_index = -1;
-EXPORT_SYMBOL(activity_index);
 
 mali_io_address clk_register_map=0;
 
@@ -161,7 +171,7 @@ void mali_regulator_enable(void)
 }
 
 void mali_regulator_set_voltage(int min_uV, int max_uV)
-{
+{	
 	int voltage;
 #if !MALI_DVFS_ENABLED
 	min_uV = mali_gpu_vol;
@@ -197,7 +207,6 @@ void mali_regulator_set_voltage(int min_uV, int max_uV)
 		MALI_DEBUG_PRINT(1, ("error on mali_regulator_set_voltage : g3d_regulator is null\n"));
 		return;
 	}
-
     MALI_DEBUG_PRINT(2, ("= regulator_set_voltage: %d, %d \n",min_uV, max_uV));
 
 #if MALI_TIMELINE_PROFILING_ENABLED
@@ -521,8 +530,7 @@ static _mali_osk_errcode_t enable_mali_clocks(void)
 	int err;
 	err = clk_enable(mali_clock);
 	MALI_DEBUG_PRINT(3,("enable_mali_clocks mali_clock %p error %d \n", mali_clock, err));
-
-	mali_runtime_resume.vol = mali_dvfs_get_vol(MALI_DVFS_STEPS + 1);
+	
 #if MALI_PMM_RUNTIME_JOB_CONTROL_ON
 #if MALI_DVFS_ENABLED
 	// set clock rate
@@ -531,14 +539,8 @@ static _mali_osk_errcode_t enable_mali_clocks(void)
 	else {
 		mali_regulator_set_voltage(mali_runtime_resume.vol, mali_runtime_resume.vol);
 		mali_clk_set_rate(mali_runtime_resume.clk, GPU_MHZ);
+		set_mali_dvfs_current_step(MALI_DVFS_STEPS+1);
 	}
-	if (mali_gpu_clk <= mali_runtime_resume.clk)
-		set_mali_dvfs_current_step(MALI_DVFS_STEPS + 1);
-	/* lock/unlock CPU freq by Mali */
-	if (mali_gpu_clk >= 533)
-		err = cpufreq_lock_by_mali(1400);
-	else if (mali_gpu_clk >= 440)
-		err = cpufreq_lock_by_mali(1200);
 #else
 	mali_regulator_set_voltage(mali_runtime_resume.vol, mali_runtime_resume.vol);
 	mali_clk_set_rate(mali_runtime_resume.clk, GPU_MHZ);
@@ -554,8 +556,10 @@ static _mali_osk_errcode_t disable_mali_clocks(void)
 	clk_disable(mali_clock);
 	MALI_DEBUG_PRINT(3,("disable_mali_clocks mali_clock %p \n", mali_clock));
 
+#if MALI_DVFS_ENABLED
 	/* lock/unlock CPU freq by Mali */
 	cpufreq_unlock_by_mali();
+#endif
 	MALI_SUCCESS;
 }
 
@@ -700,12 +704,8 @@ _mali_osk_errcode_t mali_platform_powerup(u32 cores)
 	MALI_SUCCESS;
 }
 
-/*This code for reference value of GPU activation*/
 void mali_gpu_utilization_handler(u32 utilization)
 {
-	/*printk("[TEST] GPU_UTILIZATION:%d per 1sec.", utilization);*/
-	activity_index = utilization;
-
 	if (bPoweroff==0)
 	{
 #if MALI_DVFS_ENABLED

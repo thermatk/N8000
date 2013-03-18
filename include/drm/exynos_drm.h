@@ -30,6 +30,7 @@
 #define _EXYNOS_DRM_H_
 
 #include "drm.h"
+#include <linux/fb.h>
 
 /**
  * User-desired buffer creation information structure.
