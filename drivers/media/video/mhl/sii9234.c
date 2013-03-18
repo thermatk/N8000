@@ -375,7 +375,7 @@ void sii9234_mhl_hpd_handler_false(void)
 u8 mhl_onoff_ex(bool onoff)
 {
 	struct sii9234_data *sii9234 = dev_get_drvdata(sii9244_mhldev);
-	int ret;
+	int ret = 0;
 
 	pr_info("sii9234: %s(%s)\n", __func__, onoff ? "on" : "off");
 

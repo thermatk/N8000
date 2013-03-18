@@ -603,10 +603,12 @@ int fimc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 
 	mutex_lock(&ctrl->v4l2_lock);
 
-	if (ctrl->cam->sd && fimc_cam_use)
-		ret = v4l2_subdev_call(ctrl->cam->sd, video, s_parm, a);
-	else if (ctrl->is.sd && fimc_cam_use)
-		ret = v4l2_subdev_call(ctrl->is.sd, video, s_parm, a);
+	if (ctrl->cam) {
+		if (ctrl->cam->sd && fimc_cam_use)
+			ret = v4l2_subdev_call(ctrl->cam->sd, video, s_parm, a);
+		else if (ctrl->is.sd && fimc_cam_use)
+			ret = v4l2_subdev_call(ctrl->is.sd, video, s_parm, a);
+	}
 
 	mutex_unlock(&ctrl->v4l2_lock);
 
@@ -616,21 +618,31 @@ int fimc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 /* Enumerate controls */
 int fimc_queryctrl(struct file *file, void *fh, struct v4l2_queryctrl *qc)
 {
-	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
-	int i, ret;
+	struct fimc_control *ctrl = NULL;
+	int i, ret = -EINVAL;
 
-	fimc_dbg("%s\n", __func__);
+	if (((struct fimc_prv_data *)fh)) {
+		ctrl = ((struct fimc_prv_data *)fh)->ctrl;
 
-	for (i = 0; i < ARRAY_SIZE(fimc_controls); i++) {
-		if (fimc_controls[i].id == qc->id) {
-			memcpy(qc, &fimc_controls[i], sizeof(struct v4l2_queryctrl));
-			return 0;
+		if (ctrl) {
+			fimc_dbg("%s\n", __func__);
+
+			for (i = 0; i < ARRAY_SIZE(fimc_controls); i++) {
+				if (fimc_controls[i].id == qc->id) {
+					memcpy(qc, &fimc_controls[i], sizeof(struct v4l2_queryctrl));
+					return 0;
+				}
+			}
+
+			mutex_lock(&ctrl->v4l2_lock);
+
+			if (ctrl->cam)
+				if (ctrl->cam->sd)
+					ret = v4l2_subdev_call(ctrl->cam->sd, core, queryctrl, qc);
+
+			mutex_unlock(&ctrl->v4l2_lock);
 		}
 	}
-
-	mutex_lock(&ctrl->v4l2_lock);
-	ret = v4l2_subdev_call(ctrl->cam->sd, core, queryctrl, qc);
-	mutex_unlock(&ctrl->v4l2_lock);
 
 	return ret;
 }
@@ -638,14 +650,24 @@ int fimc_queryctrl(struct file *file, void *fh, struct v4l2_queryctrl *qc)
 /* Menu control items */
 int fimc_querymenu(struct file *file, void *fh, struct v4l2_querymenu *qm)
 {
-	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
-	int ret = 0;
+	struct fimc_control *ctrl = NULL;
+	int ret = -EINVAL;
 
-	fimc_dbg("%s\n", __func__);
+	if (((struct fimc_prv_data *)fh)) {
+		ctrl = ((struct fimc_prv_data *)fh)->ctrl;
 
-	mutex_lock(&ctrl->v4l2_lock);
-	ret = v4l2_subdev_call(ctrl->cam->sd, core, querymenu, qm);
-	mutex_unlock(&ctrl->v4l2_lock);
+		if (ctrl) {
+			fimc_dbg("%s\n", __func__);
+
+			mutex_lock(&ctrl->v4l2_lock);
+
+			if (ctrl->cam)
+				if (ctrl->cam->sd)
+					ret = v4l2_subdev_call(ctrl->cam->sd, core, querymenu, qm);
+
+			mutex_unlock(&ctrl->v4l2_lock);
+		}
+	}
 
 	return ret;
 }
@@ -3390,29 +3412,37 @@ int fimc_dqbuf_capture(void *fh, struct v4l2_buffer *b)
 
 int fimc_enum_framesizes(struct file *filp, void *fh, struct v4l2_frmsizeenum *fsize)
 {
-	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
+	struct fimc_control *ctrl = NULL;
 	int i;
 	u32 index = 0;
 
-#ifdef CONFIG_SLP
-	if (ctrl->cam && ctrl->cam->sd)
-		return v4l2_subdev_call(ctrl->cam->sd, video,
-			enum_framesizes, fsize);
-#endif
-	for (i = 0; i < ARRAY_SIZE(capture_fmts); i++) {
-		if (fsize->pixel_format != capture_fmts[i].pixelformat)
-			continue;
-		if (fsize->index == index) {
-			fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-			/* this is camera sensor's width, height.
-			 * originally this should be filled each file format
-			 */
-			fsize->discrete.width = ctrl->cam->width;
-			fsize->discrete.height = ctrl->cam->height;
+	if (((struct fimc_prv_data *)fh)) {
+		ctrl = ((struct fimc_prv_data *)fh)->ctrl;
 
-			return 0;
+		if (ctrl) {
+#ifdef CONFIG_SLP
+			if (ctrl->cam && ctrl->cam->sd)
+				return v4l2_subdev_call(ctrl->cam->sd, video,
+					enum_framesizes, fsize);
+#endif
+			if (ctrl->cam && fsize) {
+				for (i = 0; i < ARRAY_SIZE(capture_fmts); i++) {
+					if (fsize->pixel_format != capture_fmts[i].pixelformat)
+						continue;
+					if (fsize->index == index) {
+						fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+						/* this is camera sensor's width, height.
+						 * originally this should be filled each file format
+						 */
+						fsize->discrete.width = ctrl->cam->width;
+						fsize->discrete.height = ctrl->cam->height;
+
+						return 0;
+					}
+					index++;
+				}
+			}
 		}
-		index++;
 	}
 
 	return -EINVAL;

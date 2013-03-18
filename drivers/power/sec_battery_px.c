@@ -134,6 +134,16 @@ static enum power_supply_property sec_battery_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_CHARGE_AVG,
+	POWER_SUPPLY_PROP_POWER_NOW,
+	POWER_SUPPLY_PROP_POWER_AVG,
+	POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN,
+	POWER_SUPPLY_PROP_ENERGY_FULL,
+	POWER_SUPPLY_PROP_ENERGY_NOW,
+	POWER_SUPPLY_PROP_ENERGY_AVG,
 };
 
 static enum power_supply_property sec_power_properties[] = {
@@ -1422,10 +1432,12 @@ static int sec_bat_get_property(struct power_supply *bat_ps,
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		val->intval = battery->info.batt_current;
+	case POWER_SUPPLY_PROP_POWER_NOW:
+		val->intval = - battery->info.batt_current * 1000;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
-		val->intval = battery->info.batt_current_avg;
+	case POWER_SUPPLY_PROP_POWER_AVG:
+		val->intval = - battery->info.batt_current_avg * 1000;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 #if defined(CONFIG_MACH_P4NOTE)
@@ -1445,6 +1457,20 @@ static int sec_bat_get_property(struct power_supply *bat_ps,
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = battery->info.batt_temp;
 		pr_debug("temp = %d\n", val->intval);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_ENERGY_FULL:
+		val->intval = get_fuelgauge_capacity(CAPACITY_TYPE_FULL) / 2 * 1000;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+	case POWER_SUPPLY_PROP_ENERGY_NOW:
+		val->intval = get_fuelgauge_capacity(CAPACITY_TYPE_REP) / 2 * 1000;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_AVG:
+	case POWER_SUPPLY_PROP_ENERGY_AVG:
+		val->intval = get_fuelgauge_capacity(CAPACITY_TYPE_AV) / 2 * 1000;
 		break;
 	default:
 		return -EINVAL;

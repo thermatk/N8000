@@ -53,6 +53,10 @@
 #include <plat/s5p-sysmmu.h>
 #endif
 
+#ifdef CONFIG_ODROID_UMP
+#include <video/hardkernel_ump.h>
+#endif
+
 struct s3c_platform_fb *to_fb_plat(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -409,8 +413,10 @@ int s3cfb_map_default_video_memory(struct s3cfb_global *fbdev,
 			(unsigned int)fix->smem_start,
 			(unsigned int)fb->screen_base, fix->smem_len);
 
+#ifndef CONFIG_FRAMEBUFFER_CONSOLE
 	if (bootloaderfb)
 		memset(fb->screen_base, 0, fix->smem_len);
+#endif
 	win->owner = DMA_MEM_FIMD;
 
 #ifdef CONFIG_FB_S5P_SYSMMU
@@ -1960,6 +1966,14 @@ int s3cfb_ioctl(struct fb_info *fb, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		break;
+#endif
+#ifdef CONFIG_ODROID_UMP
+       case GET_UMP_SECURE_ID_BUF1:
+                pr_emerg("UMP: SecureID Buf1 Called\n");
+                return disp_get_ump_secure_id(fb, arg, 0);
+       case GET_UMP_SECURE_ID_BUF2:
+                pr_emerg("UMP: SecureID Buf2 Called\n");
+                return disp_get_ump_secure_id(fb, arg, 1);
 #endif
 	}
 

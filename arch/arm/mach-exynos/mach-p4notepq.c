@@ -79,6 +79,10 @@
 #include <media/exynos_fimc_is.h>
 #include <mach/exynos-ion.h>
 
+#include <plat/fimd_lite_ext.h>
+#include <plat/hdmi.h>
+#include <drm/exynos_drm.h>
+
 #if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
 #include <mach/tdmb_pdata.h>
 #endif
@@ -168,6 +172,107 @@ extern int s6c1372_panel_gpio_init(void);
 /* cable state */
 bool is_cable_attached;
 bool is_usb_lpm_enter;
+
+#if defined(CONFIG_MALI_DRM)
+static struct platform_device exynos_mali_drm = {
+        .name = "mali_drm",
+        .id   = -1,
+};
+#endif
+
+#ifdef CONFIG_DRM_EXYNOS
+static struct resource exynos_drm_resource[] = {
+	[0] = {
+		.start = IRQ_FIMD0_VSYNC,
+		.end   = IRQ_FIMD0_VSYNC,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device exynos_drm_device = {
+	.name	= "exynos-drm",
+	.id	= -1,
+	.num_resources	  = ARRAY_SIZE(exynos_drm_resource),
+	.resource	  = exynos_drm_resource,
+	.dev	= {
+		.dma_mask = &exynos_drm_device.dev.coherent_dma_mask,
+		.coherent_dma_mask = 0xffffffffUL,
+	}
+};
+#endif
+
+#ifdef CONFIG_DRM_EXYNOS_FIMD
+static struct exynos_drm_fimd_pdata drm_fimd_pdata = {
+	.panel = {
+		.timing	= {
+			.xres		= 1280,
+			.yres		= 800,
+			.hsync_len	= 5,
+			.left_margin	= 5,
+			.right_margin	= 5,
+			.vsync_len	= 2,
+			.upper_margin	= 1,
+			.lower_margin	= 13,
+			.refresh	= 60,
+		},
+		.width_mm	= 210,
+		.height_mm	= 135,
+	},
+	.vidcon0		= VIDCON0_VIDOUT_RGB | VIDCON0_PNRMODE_RGB,
+	.vidcon1		= VIDCON1_INV_VCLK,
+	.default_win		= 3,
+	.bpp			= 24,
+	.dynamic_refresh	= 0,
+	.high_freq		= 1,
+};
+
+static struct resource exynos4_fimd_lite_resource[] = {
+	[0] = {
+		.start	= EXYNOS4_PA_LCD_LITE0,
+		.end	= EXYNOS4_PA_LCD_LITE0 + S5P_SZ_LCD_LITE0 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= IRQ_LCD_LITE0,
+		.end	= IRQ_LCD_LITE0,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct s5p_fimd_ext_device exynos4_fimd_lite_device = {
+	.name			= "fimd_lite",
+	.id			= -1,
+	.num_resources		= ARRAY_SIZE(exynos4_fimd_lite_resource),
+	.resource		= exynos4_fimd_lite_resource,
+	.dev			= {
+		.platform_data	= &drm_fimd_pdata,
+	},
+};
+#endif
+
+#ifdef CONFIG_DRM_EXYNOS_HDMI
+static struct exynos_drm_hdmi_pdata drm_hdmi_pdata = {
+	.is_v13 = true,
+	.cfg_hpd	= s5p_hdmi_cfg_hpd,
+	.get_hpd	= s5p_hdmi_get_hpd,
+};
+
+static struct exynos_drm_common_hdmi_pd drm_common_hdmi_pdata = {
+	.hdmi_dev	= &s5p_device_hdmi.dev,
+	.mixer_dev	= &s5p_device_mixer.dev,
+};
+
+static struct platform_device exynos_drm_hdmi_device = {
+	.name	= "exynos-drm-hdmi",
+	.dev	= {
+		.platform_data = &drm_common_hdmi_pdata,
+	},
+};
+#endif
+
+static struct platform_device exynos_drm_vidi_device = {
+	.name	= "exynos-drm-vidi",
+};
 
 /* Following are default values for UCON, ULCON and UFCON UART registers */
 #define SMDK4212_UCON_DEFAULT	(S3C2410_UCON_TXILEVEL |	\
@@ -1045,6 +1150,13 @@ static void irda_device_init(void)
 
 	s3c_gpio_cfgpin(GPIO_IRDA_IRQ, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_IRDA_IRQ, S3C_GPIO_PULL_UP);
+
+	ret = gpio_request(GPIO_IRDA_IRQ, "irda_irq");
+	if (ret) {
+		printk(KERN_ERR "%s: gpio_request fail[%d], ret = %d\n",
+				__func__, GPIO_IRDA_IRQ, ret);
+		return;
+	}
 	gpio_direction_input(GPIO_IRDA_IRQ);
 
 	return;
@@ -1919,6 +2031,25 @@ static struct platform_device *midas_devices[] __initdata = {
 #endif
 #endif
 
+#if defined(CONFIG_MALI_DRM)
+	&exynos_mali_drm,
+#endif
+
+#ifdef CONFIG_DRM_EXYNOS_FIMD
+	&s5p_device_fimd0,
+#endif
+#ifdef CONFIG_DRM_EXYNOS_HDMI
+	&s5p_device_hdmi,
+	&s5p_device_mixer,
+	&exynos_drm_hdmi_device,
+#endif
+	&exynos_drm_vidi_device,
+#ifdef CONFIG_DRM_EXYNOS_G2D
+	&s5p_device_fimg2d,
+#endif
+#ifdef CONFIG_DRM_EXYNOS
+	&exynos_drm_device,
+#endif
 #ifdef CONFIG_FB_S5P_MDNIE
 	&mdnie_device,
 #endif
@@ -2075,6 +2206,9 @@ static struct platform_device *midas_devices[] __initdata = {
 #if defined(CONFIG_VIDEO_MFC5X) || defined(CONFIG_VIDEO_SAMSUNG_S5P_MFC)
 	&s5p_device_mfc,
 #endif
+#ifdef CONFIG_DRM_EXYNOS_FIMD
+	&SYSMMU_PLATDEV(fimd0),
+#endif
 #ifdef CONFIG_S5P_SYSTEM_MMU
 	&SYSMMU_PLATDEV(g2d_acp),
 	&SYSMMU_PLATDEV(fimc0),
@@ -2213,6 +2347,13 @@ static struct s5p_platform_cec hdmi_cec_data __initdata = {
 static void __init exynos4_reserve_mem(void)
 {
 	static struct cma_region regions[] = {
+#ifdef CONFIG_DRM_EXYNOS
+		{
+			.name = "drm",
+			.size = CONFIG_DRM_EXYNOS_MEMSIZE * SZ_1K,
+			.start = 0
+		},
+#endif
 #ifdef CONFIG_VIDEO_EXYNOS_FIMC_IS
 		{
 			.name = "fimc_is",
@@ -2362,6 +2503,9 @@ static void __init exynos4_reserve_mem(void)
 #endif
 
 	static const char map[] __initconst =
+#ifdef CONFIG_DRM_EXYNOS
+		"exynos-drm=drm;"
+#endif
 #ifdef CONFIG_EXYNOS_C2C
 		"samsung-c2c=c2c_shdmem;"
 #endif
@@ -2443,6 +2587,8 @@ static void __init exynos_sysmmu_init(void)
 	ASSIGN_SYSMMU_POWERDOMAIN(fimc2, &exynos4_device_pd[PD_CAM].dev);
 	ASSIGN_SYSMMU_POWERDOMAIN(fimc3, &exynos4_device_pd[PD_CAM].dev);
 	ASSIGN_SYSMMU_POWERDOMAIN(jpeg, &exynos4_device_pd[PD_CAM].dev);
+	ASSIGN_SYSMMU_POWERDOMAIN(fimd0, &exynos4_device_pd[PD_LCD0].dev);
+	ASSIGN_SYSMMU_POWERDOMAIN(rot, &exynos4_device_pd[PD_LCD0].dev);
 
 #if defined(CONFIG_VIDEO_SAMSUNG_S5P_MFC) || defined(CONFIG_VIDEO_MFC5X)
 	ASSIGN_SYSMMU_POWERDOMAIN(mfc_l, &exynos4_device_pd[PD_MFC].dev);
@@ -2467,6 +2613,15 @@ static void __init exynos_sysmmu_init(void)
 #endif
 #ifdef CONFIG_VIDEO_JPEG_V2X
 	sysmmu_set_owner(&SYSMMU_PLATDEV(jpeg).dev, &s5p_device_jpeg.dev);
+#endif
+#ifdef CONFIG_DRM_EXYNOS_FIMD
+	sysmmu_set_owner(&SYSMMU_PLATDEV(fimd0).dev, &s5p_device_fimd0.dev);
+#endif
+#ifdef CONFIG_DRM_EXYNOS_HDMI
+	sysmmu_set_owner(&SYSMMU_PLATDEV(tv).dev, &s5p_device_hdmi.dev);
+#endif
+#ifdef CONFIG_DRM_EXYNOS_G2D
+	sysmmu_set_owner(&SYSMMU_PLATDEV(g2d_acp).dev, &s5p_device_fimg2d.dev);
 #endif
 #ifdef CONFIG_VIDEO_EXYNOS_FIMC_IS
 	ASSIGN_SYSMMU_POWERDOMAIN(is_isp, &exynos4_device_pd[PD_ISP].dev);
@@ -2672,6 +2827,16 @@ static void __init midas_machine_init(void)
 	exynos4_device_fimc_is.dev.parent = &exynos4_device_pd[PD_ISP].dev;
 #endif
 #endif
+/*#ifdef CONFIG_VIDEO_FIMC
+	s3c_fimc0_set_platdata(&fimc_plat);
+	s3c_fimc1_set_platdata(&fimc_plat);
+	s3c_fimc2_set_platdata(NULL);
+#ifdef CONFIG_DRM_EXYNOS_FIMD_WB
+	s3c_fimc3_set_platdata(&fimc_plat);
+#else
+	s3c_fimc3_set_platdata(NULL);
+#endif
+#endif*/
 #ifdef CONFIG_EXYNOS4_DEV_MSHC
 	s3c_mshci_set_platdata(&exynos4_mshc_pdata);
 #endif
@@ -2686,6 +2851,17 @@ static void __init midas_machine_init(void)
 #endif
 #ifdef CONFIG_S3C_DEV_HSMMC3
 	s3c_sdhci3_set_platdata(&smdk4212_hsmmc3_pdata);
+#endif
+
+#ifdef CONFIG_DRM_EXYNOS_FIMD
+	/*
+	 * platform device name for fimd driver should be changed
+	 * because we can get source clock with this name.
+	 *
+	 * P.S. refer to sclk_fimd definition of clock-exynos4.c
+	 */
+	s5p_fb_setname(0, "s3cfb");
+	s5p_device_fimd0.dev.parent = &exynos4_device_pd[PD_LCD0].dev;
 #endif
 
 	midas_camera_init();
@@ -2742,6 +2918,10 @@ static void __init midas_machine_init(void)
 	exynos_sysmmu_init();
 
 	platform_add_devices(midas_devices, ARRAY_SIZE(midas_devices));
+
+#ifdef CONFIG_DRM_EXYNOS_FIMD
+	s5p_fimd_ext_device_register(&exynos4_fimd_lite_device);
+#endif
 
 #ifdef CONFIG_S3C_ADC
 	platform_device_register(&s3c_device_adc);

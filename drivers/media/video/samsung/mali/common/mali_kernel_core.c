@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -169,9 +169,8 @@ _mali_osk_errcode_t mali_kernel_constructor( void )
     err  = initialize_subsystems();
     if (_MALI_OSK_ERR_OK != err) goto error3;
 
-    MALI_PRINT(("Mali device driver %s loaded\n", SVN_REV_STRING));
-
-	MALI_SUCCESS;
+    //MALI_PRINT(("Mali device driver %s loaded\n", SVN_REV_STRING));
+    MALI_SUCCESS;
 
 error3:
 	MALI_PRINT(("Mali subsystems failed\n"));

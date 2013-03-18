@@ -25,12 +25,11 @@ endif
 
 
 # For UMP Debug
-ifeq ($(CONFIG_VIDEO_MALI400MP_UMP_DEBUG),y)
+ifeq ($(CONFIG_VIDEO_UMP_DEBUG),y)
 DEFINES += -DDEBUG
 endif
 
 # Set up our defines, which will be passed to gcc
-DEFINES += -DKERNEL_BUILTIN=1
 DEFINES += -DMALI_USE_UNIFIED_MEMORY_PROVIDER
 DEFINES += -DUSING_MEMORY=$(USING_MEMORY)
 DEFINES += -DUMP_MEM_SIZE=$(UMP_MEM_SIZE)
@@ -41,7 +40,7 @@ KBUILDROOT =
 
 # linux build system integration
 
-obj-$(CONFIG_VIDEO_MALI400MP_UMP)	+= ump.o
+obj-$(CONFIG_VIDEO_UMP)	+= ump.o
 
 # For customer releases the Linux Device Drivers will be provided as ARM proprietary and GPL releases:
 # The ARM proprietary product will only include the license/proprietary directory
@@ -87,8 +86,8 @@ EXTRA_CFLAGS += $(INCLUDES) \
 		
 		
 # Get subversion revision number, fall back to 0000 if no svn info is available
-SVN_REV:=$(shell ((svnversion | grep -qv exported && echo -n 'Revision: ' && svnversion) || git svn info | sed -e 's/$$$$/M/' | grep '^Revision: ' || echo ${MALI_RELEASE_NAME}) 2>/dev/null | sed -e 's/^Revision: //')
+# SVN_REV:=$(shell ((svnversion | grep -qv exported && echo -n 'Revision: ' && svnversion) || git svn info | sed -e 's/$$$$/M/' | grep '^Revision: ' || echo ${MALI_RELEASE_NAME}) 2>/dev/null | sed -e 's/^Revision: //')
+SVN_REV:=0000
 		
 EXTRA_CFLAGS += -DSVN_REV=$(SVN_REV)
 EXTRA_CFLAGS += -DSVN_REV_STRING=\"$(SVN_REV)\"
-		 

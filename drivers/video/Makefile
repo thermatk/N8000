@@ -119,6 +119,7 @@ obj-$(CONFIG_FB_SH7760)		  += sh7760fb.o
 obj-$(CONFIG_FB_IMX)              += imxfb.o
 obj-$(CONFIG_FB_MIPI_DSIM)	  += s5p_mipi_dsi.o s5p_mipi_dsi_lowlevel.o
 obj-$(CONFIG_FB_S3C)		  += s3c-fb.o
+obj-$(CONFIG_ODROID_UMP)	  += hardkernel_ump.o
 obj-$(CONFIG_S5P_DP)		  += s5p-dp-core.o s5p-dp-reg.o
 obj-$(CONFIG_FB_S3C2410)	  += s3c2410fb.o
 ifeq ($(CONFIG_S5P_DSIM_SWITCHABLE_DUAL_LCD),y)
@@ -183,3 +184,8 @@ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 #video output switch sysfs driver
 obj-$(CONFIG_VIDEO_OUTPUT_CONTROL) += output.o
 
+ifeq ($(CONFIG_ODROID_UMP),y)
+	EXTRA_CFLAGS += -Idrivers/media/video/samsung/ump_r3p2 \
+			-Idrivers/media/video/samsung/mali_r3p2/common \
+			-Idrivers/media/video/samsung/mali_r3p2/linux
+endif

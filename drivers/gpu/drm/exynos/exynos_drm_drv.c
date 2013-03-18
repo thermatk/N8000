@@ -25,6 +25,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <linux/seq_file.h>
+
 #include "drmP.h"
 #include "drm.h"
 #include "drm_crtc_helper.h"
@@ -190,12 +192,15 @@ static int exynos_drm_load(struct drm_device *dev, unsigned long flags)
 
 	drm_vblank_offdelay = VBLANK_OFF_DELAY;
 
+#ifdef CONFIG_DEBUG_FS
 	minor = dev->primary;
+
 	ret = drm_debugfs_create_files(exynos_drm_debugfs_list,
 						EXYNOS_DRM_DEBUGFS_ENTRIES,
 						minor->debugfs_root, minor);
 	if (ret)
 		DRM_DEBUG_DRIVER("failed to create exynos-drm debugfs.\n");
+#endif
 
 	return 0;
 
@@ -230,8 +235,10 @@ static int exynos_drm_unload(struct drm_device *dev)
 
 	dev->dev_private = NULL;
 
+#ifdef CONFIG_DEBUG_FS
 	drm_debugfs_remove_files(exynos_drm_debugfs_list,
 				EXYNOS_DRM_DEBUGFS_ENTRIES, dev->primary);
+#endif
 
 	return 0;
 }
